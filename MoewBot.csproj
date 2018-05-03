@@ -72,7 +72,6 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Proxy.cs" />
-    <None Include="app.config" />
     <Compile Include="Server.cs" />
     <Compile Include="WSServer.cs" />
     <None Include="app.manifest">
