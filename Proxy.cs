@@ -16,7 +16,7 @@ namespace MoewBot
 
 		public Proxy(ushort port)
 		{
-			_port = port;
+			_port        = port;
 			_hashManager = new HashManager(SCRIPTS_DIRECTORY);
 		}
 
@@ -43,73 +43,83 @@ namespace MoewBot
 		public void LoadScripts()
 		{
 			var filesToLoad = Util.FindDlls(SCRIPTS_DIRECTORY);
-			if (filesToLoad.Count > 0)
+			if (filesToLoad.Count <= 0)
 			{
-				foreach (var file in filesToLoad)
-				{
-					var dll = Assembly.LoadFile(Path.GetFullPath(file));
-
-					foreach (var exportedType in dll.GetExportedTypes())
-					{
-						dynamic c = Activator.CreateInstance(exportedType);
-						c.Init();
-
-						Logger.Debug($"Loaded {c}");
-					}
-				}
-
-				Logger.Info($"Loaded {filesToLoad.Count} scripts");
+				Logger.Debug("No scripts to load");
+				return;
 			}
+
+			foreach (var file in filesToLoad)
+			{
+				var dll = Assembly.LoadFile(Path.GetFullPath(file));
+
+				foreach (var exportedType in dll.GetExportedTypes())
+				{
+					dynamic c = Activator.CreateInstance(exportedType);
+					c.Init();
+
+					Logger.Debug($"Loaded {c}");
+				}
+			}
+
+			Logger.Info($"Loaded {filesToLoad.Count} scripts");
 		}
 
 		public void CompileScripts()
 		{
 			var filesToCompile = Util.FindScripts(SCRIPTS_DIRECTORY);
+
 			// compile .cs files to .dll
-			if (filesToCompile.Count > 0)
+			if (filesToCompile.Count <= 0)
 			{
-				var provider = CodeDomProvider.CreateProvider("CSharp");
+				Logger.Debug("No scripts to compile");
+				return;
+			}
 
-				_hashManager.Load();
-				foreach (var file in filesToCompile)
+			var provider = CodeDomProvider.CreateProvider("CSharp");
+
+			_hashManager.Load();
+			foreach (var file in filesToCompile)
+			{
+				var hash     = Util.CalculateMd5(file);
+				var fileHash = _hashManager.FindHash(file);
+
+				if (fileHash != null && fileHash == hash)
 				{
-					var hash     = Util.CalculateMd5(file);
-					var fileHash = _hashManager.FindHash(file);
+					Logger.Trace($"File already compiled &s{file}");
+					continue;
+				}
 
-					if (fileHash != null && fileHash == hash)
+				var dll = file.Replace(".cs", ".dll");
+
+				if (File.Exists(dll))
+					File.Delete(dll);
+
+				var currentAssembly = typeof(Program).Assembly.GetName().Name + ".exe";
+				var parameters = new CompilerParameters
+				{
+					ReferencedAssemblies = {"System.dll", currentAssembly},
+					GenerateExecutable   = false,
+					OutputAssembly       = dll
+				};
+				var results = provider.CompileAssemblyFromFile(parameters, file);
+
+				if (results.Errors.Count > 0)
+				{
+					foreach (CompilerError compilerError in results.Errors)
 					{
-						Logger.Trace($"File already compiled &s{file}");
-						continue;
-					}
-
-					_hashManager.SetHash(file, hash);
-
-					var dll = file.Replace(".cs", ".dll");
-
-					if (File.Exists(dll))
-						File.Delete(dll);
-
-					var parameters = new CompilerParameters(new[] {"System.dll", "FiddlerCore45.dll", "MoewBot.exe"})
-					{
-						GenerateExecutable = false,
-						OutputAssembly     = dll
-					};
-					var results = provider.CompileAssemblyFromFile(parameters, file);
-
-					if (results.Errors.Count > 0)
-					{
-						foreach (CompilerError compilerError in results.Errors)
-						{
-							Logger.Error(compilerError);
-						}
-					}
-					else
-					{
-						Logger.Debug($"Compiled {file}");
+						Logger.Error(compilerError);
 					}
 				}
-				_hashManager.Save();
+				else
+				{
+					_hashManager.SetHash(file, hash);
+
+					Logger.Debug($"Compiled {file}");
+				}
 			}
+
+			_hashManager.Save();
 		}
 
 		public void Stop()

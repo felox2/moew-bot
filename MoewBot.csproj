@@ -39,6 +39,9 @@
     <StartupObject>MoewBot.Program</StartupObject>
   </PropertyGroup>
   <PropertyGroup />
+  <PropertyGroup>
+    <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="FiddlerCore45">
       <HintPath>D:\Libraries\FiddlerCoreAPI\FiddlerCore45.dll</HintPath>

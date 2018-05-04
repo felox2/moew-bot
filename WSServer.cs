@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices;
 using System.Text;
 using WindowsInput;
+using WindowsInput.Native;
 using WebSocketSharp;
 using WebSocketSharp.Server;
 using Newtonsoft.Json;
@@ -68,6 +69,15 @@ namespace MoewBot
 					}
 				}
 					break;
+
+				case "keyboard_virtual":
+				{
+					if (Enum.TryParse(data.key.ToString(), true, out VirtualKeyCode keyCode))
+					{
+						Logger.Info($"Simulating virtual keyboard input '{keyCode.ToString()}'");
+						_inputSimulator.Keyboard.KeyPress(keyCode);
+					}
+				} break;
 
 				case "mouse_move":
 				{

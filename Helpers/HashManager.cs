@@ -40,6 +40,10 @@ namespace MoewBot
 
 		public void Save()
 		{
+			var dir = Path.GetDirectoryName(Filename);
+			if (!Directory.Exists(dir))
+				Directory.CreateDirectory(dir);
+
 			using (Stream stream = File.Open(Filename, FileMode.OpenOrCreate))
 			{
 				_binaryFormatter.Serialize(stream, _hashes);
