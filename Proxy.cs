@@ -98,7 +98,11 @@ namespace MoewBot
 				var currentAssembly = typeof(Program).Assembly.GetName().Name + ".exe";
 				var parameters = new CompilerParameters
 				{
+#if DEBUG
+					ReferencedAssemblies = {"System.dll", "FiddlerCore45.dll", currentAssembly},
+#else
 					ReferencedAssemblies = {"System.dll", currentAssembly},
+#endif
 					GenerateExecutable   = false,
 					OutputAssembly       = dll
 				};

@@ -1,16 +1,33 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Reflection;
-using System.Runtime.Serialization.Formatters.Binary;
+using System.Runtime.InteropServices;
 using System.Threading;
 using NDesk.Options;
 
 namespace MoewBot
 {
+	// An enumerated type for the control messages sent to the handler routine.
+	public enum CtrlTypes
+	{
+		CTRL_C_EVENT = 0,
+		CTRL_BREAK_EVENT,
+		CTRL_CLOSE_EVENT,
+		CTRL_LOGOFF_EVENT = 5,
+		CTRL_SHUTDOWN_EVENT
+	}
+
 	internal class Program
 	{
+		// Declare the SetConsoleCtrlHandler function as external and receiving a delegate.
+		[DllImport("Kernel32")]
+		public static extern bool SetConsoleCtrlHandler(HandlerRoutine handler, bool add);
+
+		// A delegate type to be used as the handler routine for SetConsoleCtrlHandler.
+		public delegate bool HandlerRoutine(CtrlTypes ctrlType);
+
+		private static Proxy _proxy;
+		private static Server _server;
+		private static HandlerRoutine _handler;
+
 		static void Main(string[] args)
 		{
 			bool runProxy  = true;
@@ -23,30 +40,25 @@ namespace MoewBot
 			};
 			var other = p.Parse(args);
 
+			_handler = ConsoleCtrlCheck;
+			SetConsoleCtrlHandler(_handler, true);
+
 			Console.Title = "MoewBot";
 
-			Proxy  proxy  = new Proxy(65523);
-			Server server = new Server(8085);
+			_proxy  = new Proxy(65523);
+			_server = new Server(8085);
 
 			if (runProxy)
 			{
-				Thread t = new Thread(ProxyStart);
-				t.Start(proxy);
+				var t = new Thread(ProxyStart);
+				t.Start(_proxy);
 			}
 
 			if (runServer)
 			{
 				var t = new Thread(ServerStart);
-				t.Start(server);
+				t.Start(_server);
 			}
-
-			AppDomain.CurrentDomain.ProcessExit += (sender, eventArgs) =>
-			{
-				proxy.Stop();
-				server.Stop();
-
-				Logger.Close();
-			};
 
 			while (true)
 			{
@@ -55,18 +67,36 @@ namespace MoewBot
 				switch (key.Key)
 				{
 					case ConsoleKey.Q:
+					{
+						Exit(CtrlTypes.CTRL_CLOSE_EVENT);
 						Environment.Exit(0);
+					}
 						break;
 					case ConsoleKey.R:
 					{
-						proxy?.CompileScripts();
-						proxy?.LoadScripts();
+						_proxy?.CompileScripts();
+						_proxy?.LoadScripts();
 					}
-					break;
+						break;
 				}
 
 				Thread.Sleep(50);
 			}
+		}
+
+		private static bool Exit(CtrlTypes ctrlType)
+		{
+			_proxy?.Stop();
+			_server?.Stop();
+
+			Logger.Close(ctrlType);
+
+			return true;
+		}
+
+		private static bool ConsoleCtrlCheck(CtrlTypes ctrlType)
+		{
+			return Exit(ctrlType);
 		}
 
 		private static void ServerStart(object o)

@@ -86,5 +86,11 @@ namespace MoewBot
 		{
 			_writerAll?.Close();
 		}
+
+		public static void Close(CtrlTypes ctrlType)
+		{
+			_writerAll?.WriteLine($"Exit event caught: {ctrlType}");
+			_writerAll?.Close();
+		}
 	}
 }

@@ -42,11 +42,6 @@ namespace MoewBot
 			return temp;
 		}
 
-		public static List<string> FindScriptsLINQ(string directory)
-		{
-			return Directory.GetFiles(directory).Where(file => file.EndsWith(".cs")).ToList();
-		}
-
 		public static List<string> FindDlls(string directory)
 		{
 			List<string> temp = new List<string>();
